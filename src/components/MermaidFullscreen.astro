@@ -1,0 +1,268 @@
+---
+// Adds fullscreen functionality to mermaid diagrams
+---
+
+<script>
+  function initMermaidFullscreen() {
+    const mermaids = document.querySelectorAll('.mermaid');
+
+    mermaids.forEach((container) => {
+      // Skip if already has fullscreen button
+      if (container.querySelector('.mermaid-fullscreen-btn')) return;
+
+      // Find the mermaid diagram SVG (has id starting with "mermaid-" or is direct child)
+      const svg = container.querySelector('svg[id^="mermaid-"]') ||
+                  container.querySelector(':scope > svg') ||
+                  Array.from(container.querySelectorAll('svg')).find(s => !s.closest('button'));
+
+      if (!svg) return;
+
+      // Create a wrapper div for positioning
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mermaid-wrapper';
+
+      // Move mermaid content into wrapper
+      while (container.firstChild) {
+        wrapper.appendChild(container.firstChild);
+      }
+      container.appendChild(wrapper);
+
+      // Create fullscreen button
+      const btn = document.createElement('button');
+      btn.className = 'mermaid-fullscreen-btn';
+      btn.type = 'button';
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg> Expand`;
+      btn.title = 'View fullscreen';
+      btn.setAttribute('aria-label', 'View diagram fullscreen');
+
+      // Store reference to the container for finding the diagram
+      const containerRef = container;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Find the SVG fresh each time to handle any re-rendering
+        const currentWrapper = containerRef.querySelector('.mermaid-wrapper');
+        const searchTarget = currentWrapper || containerRef;
+        const diagramSvg = searchTarget.querySelector('svg[id^="mermaid-"]') ||
+                          searchTarget.querySelector('svg:first-of-type');
+        if (diagramSvg) {
+          openFullscreen(diagramSvg as SVGElement);
+        }
+      });
+
+      container.appendChild(btn);
+    });
+  }
+
+  function openFullscreen(svg: SVGElement) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-modal';
+
+    // Create modal content
+    const content = document.createElement('div');
+    content.className = 'mermaid-modal-content';
+
+    // Clone the SVG
+    const clonedSvg = svg.cloneNode(true) as SVGElement;
+
+    // Reset size attributes but preserve other styling
+    clonedSvg.removeAttribute('width');
+    clonedSvg.removeAttribute('height');
+    // Only remove size-related inline styles, not the entire style attribute
+    if (clonedSvg.style.cssText) {
+      clonedSvg.style.maxWidth = '';
+      clonedSvg.style.width = '';
+      clonedSvg.style.height = '';
+    }
+    clonedSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+    // Ensure the SVG has proper viewBox for scaling - if not, try to set one based on original dimensions
+    if (!clonedSvg.getAttribute('viewBox')) {
+      const origWidth = svg.getAttribute('width') || svg.getBoundingClientRect().width;
+      const origHeight = svg.getAttribute('height') || svg.getBoundingClientRect().height;
+      if (origWidth && origHeight) {
+        clonedSvg.setAttribute('viewBox', `0 0 ${origWidth} ${origHeight}`);
+      }
+    }
+
+    content.appendChild(clonedSvg);
+
+    // Create close button
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'mermaid-modal-close';
+    closeBtn.type = 'button';
+    closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    closeBtn.title = 'Close';
+    closeBtn.setAttribute('aria-label', 'Close fullscreen');
+
+    modal.appendChild(content);
+    modal.appendChild(closeBtn);
+    document.body.appendChild(modal);
+
+    // Save scroll position and prevent body scroll
+    const scrollY = window.scrollY;
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    // Close handlers
+    const close = () => {
+      modal.remove();
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY);
+    };
+
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+
+    const escHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        close();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    closeBtn.focus({ preventScroll: true });
+  }
+
+  // Watch for mermaid to finish rendering
+  function watchForMermaid() {
+    const observer = new MutationObserver(() => {
+      initMermaidFullscreen();
+    });
+
+    document.querySelectorAll('.mermaid').forEach((mermaid) => {
+      observer.observe(mermaid, { childList: true, subtree: true });
+    });
+
+    initMermaidFullscreen();
+    setTimeout(initMermaidFullscreen, 1000);
+    setTimeout(initMermaidFullscreen, 2500);
+  }
+
+  document.addEventListener('DOMContentLoaded', watchForMermaid);
+  document.addEventListener('astro:page-load', watchForMermaid);
+  if (document.readyState !== 'loading') {
+    watchForMermaid();
+  }
+</script>
+
+<style is:global>
+  .mermaid {
+    position: relative;
+  }
+
+  .mermaid-wrapper {
+    display: block;
+    width: 100%;
+    background: white;
+  }
+
+  .mermaid-wrapper > svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+    background: white;
+  }
+
+  .mermaid-fullscreen-btn {
+    position: absolute !important;
+    top: 8px !important;
+    right: 16px !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    padding: 6px 10px !important;
+    margin: 0 !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    color: white !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    font-family: system-ui, sans-serif !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    z-index: 100 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    flex: none !important;
+  }
+
+  .mermaid-fullscreen-btn:hover {
+    background: rgba(0, 0, 0, 0.9) !important;
+  }
+
+  .mermaid-fullscreen-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .mermaid-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 2rem;
+  }
+
+  .mermaid-modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    width: 90vw;
+    height: 85vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mermaid-modal-content svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .mermaid-modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 8px;
+    background: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #333;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .mermaid-modal-close:hover {
+    background: #f0f0f0;
+  }
+</style>

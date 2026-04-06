@@ -1,0 +1,83 @@
+---
+import { getCollection } from "astro:content";
+import Container from "@components/Container.astro";
+import PageLayout from "@layouts/PageLayout.astro";
+import ProjectCard from "@components/ProjectCard.astro";
+import { PROJECTS } from "@consts";
+
+const projects = await getCollection("projects", ({ data }) => !data.draft);
+
+// Sort by priority first, then year (most recent first), then by featured
+const sortedProjects = projects.sort((a, b) => {
+  // Priority first (higher priority = first)
+  const priorityA = a.data.priority ?? 0;
+  const priorityB = b.data.priority ?? 0;
+  if (priorityA !== priorityB) {
+    return priorityB - priorityA;
+  }
+
+  // Extract end year from years string (e.g., "2018-2021" -> 2021)
+  const getEndYear = (years: string) => {
+    const parts = years.split("-");
+    return parseInt(parts[parts.length - 1]);
+  };
+
+  const yearA = getEndYear(a.data.years);
+  const yearB = getEndYear(b.data.years);
+
+  if (yearA !== yearB) {
+    return yearB - yearA;
+  }
+
+  // If same year, featured projects come first
+  if (a.data.featured && !b.data.featured) return -1;
+  if (!a.data.featured && b.data.featured) return 1;
+
+  return 0;
+});
+
+// Group by category
+const featuredProjects = sortedProjects.filter(p => p.data.featured);
+const otherProjects = sortedProjects.filter(p => !p.data.featured);
+---
+
+<PageLayout title={PROJECTS.TITLE} description={PROJECTS.DESCRIPTION}>
+  <Container>
+    <div class="space-y-10">
+      <div class="animate space-y-2">
+        <h1 class="text-2xl font-semibold text-black dark:text-white">
+          Projects
+        </h1>
+        <p class="text-black/80 dark:text-white/80">
+          A collection of professional and personal projects I've worked on over the years.
+        </p>
+      </div>
+
+      {featuredProjects.length > 0 && (
+        <section class="animate space-y-4">
+          <h2 class="font-semibold text-black dark:text-white">
+            Featured Projects
+          </h2>
+          <div class="grid gap-4">
+            {featuredProjects.map((project) => (
+              <ProjectCard project={project} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {otherProjects.length > 0 && (
+        <section class="animate space-y-4">
+          <h2 class="font-semibold text-black dark:text-white">
+            Other Projects
+          </h2>
+          <div class="grid gap-4">
+            {otherProjects.map((project) => (
+              <ProjectCard project={project} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </Container>
+</PageLayout>
