@@ -4,11 +4,6 @@ description: "Features that used to take a sprint now ship in hours. The single 
 date: "Apr 5 2026"
 ---
 
-import swissCheeseModel from './swiss-cheese-model-codebase.svg';
-import agentDocsExample from './agent-docs-example.png';
-import aiIssueTriage from './ai-issue-triage.png';
-import aiPrReview from './ai-pr-review.png';
-
 Features that used to take a sprint now ship in hours. Newly reported bugs are at a three-year low. The codebase is fixing its own flaky tests, updating docs, and closing coverage gaps — without anyone asking.
 
 None of that happened because of clever prompts or waiting for the right model. It happened because we redesigned the codebase itself to work well for agents.
@@ -23,7 +18,7 @@ The foundation underneath all of it: the GitHub repo is the single source of tru
 
 There is no single trick that makes agents reliable in a mature codebase. The mental model that has worked best for us is the Swiss-cheese model: many imperfect layers, stacked together.
 
-<img src={swissCheeseModel.src} alt="The Swiss cheese model to ensure high-quality output" />
+![The Swiss cheese model to ensure high-quality output](./swiss-cheese-model-codebase.svg)
 
 Some layers prevent bad output: linting, type checking, tests, hooks. Some layers help agents produce good output in the first place: clear code, well-placed rules, architecture docs, specs. And some layers catch what slips through anyway: AI review, human review. No single slice is enough. The stack is what makes agents produce high-quality code.
 
@@ -78,7 +73,7 @@ Not all agent-generated content belongs in the main repo, though. Implementation
 
 We ended up repurposing the [GitHub wiki git repo](https://docs.github.com/en/communities/documenting-your-project-with-wikis/about-wikis) for this. Every GitHub repository comes with a wiki repo attached to it. We disabled the wiki UI and use the bare git repo purely as a shared artifact store. Agents push documents there organized by PR number and link them automatically so reviewers can see the full context. Since the wiki repo is checked out locally, agents working on new changes also have access to prior implementation plans and explorations, which helps them build on existing work.
 
-<img src={agentDocsExample.src} alt="Agent docs example PR comment" />
+![Agent docs example PR comment](./agent-docs-example.png)
 
 It is a hack, honestly. But it works surprisingly well as a lightweight, version-controlled scratch space that lives right next to the main repo.
 
@@ -189,11 +184,11 @@ As output goes up, review becomes the next bottleneck. So we invested in multipl
 
 On the issue side, we added a [custom AI issue triage workflow](https://github.com/streamlit/streamlit/blob/develop/.github/workflows/ai-issue-triage.yml) that provides an initial analysis, finds related issues, and applies labels. On the PR side, we use GitHub Copilot, Cursor BugBot, and Graphite as a first layer of fast automated review.
 
-<img src={aiIssueTriage.src} alt="AI issue triage comment example" />
+![AI issue triage comment example](./ai-issue-triage.png)
 
 We also built a [custom multi-model PR review workflow](https://github.com/streamlit/streamlit/blob/develop/.github/workflows/ai-pr-review.yml). It lets us review a PR with an arbitrary combination of models. Right now that includes `gpt-5.3-codex-high`, `gemini-3.1-pro`, and `opus-4.6-thinking`, with one acting as the judge.
 
-<img src={aiPrReview.src} alt="AI PR review comment example" />
+![AI PR review comment example](./ai-pr-review.png)
 
 That review layer has been one of the highest-leverage pieces of the whole setup. It catches non-obvious issues, and by the time a human reviewer opens the PR, most of the boring stuff is already handled.
 
