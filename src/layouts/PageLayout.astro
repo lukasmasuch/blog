@@ -1,0 +1,34 @@
+---
+import Head from "@components/Head.astro";
+import Header from "@components/Header.astro";
+import Footer from "@components/Footer.astro";
+import MermaidFullscreen from "@components/MermaidFullscreen.astro";
+import { SITE } from "@consts";
+
+type Props = {
+  title: string;
+  description: string;
+  article?: {
+    publishedTime: Date;
+    modifiedTime?: Date;
+    author?: string;
+  };
+};
+
+const { title, description, article } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head title={`${title} | ${SITE.NAME}`} description={description} article={article} />
+  </head>
+  <body>
+    <Header />
+    <main>
+      <slot />
+    </main>
+    <Footer />
+    <MermaidFullscreen />
+  </body>
+</html>
